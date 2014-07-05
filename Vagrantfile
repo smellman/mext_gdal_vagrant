@@ -120,4 +120,32 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   # chef-validator, unless you changed the configuration.
   #
   #   chef.validation_client_name = "ORGNAME-validator"
+  config.vm.provision :shell, inline: <<-SH1
+    set -x
+    export DEBIAN_FRONTEND=noninteractive
+    apt-get update
+    apt-get -y upgrade
+    apt-get build-dep gdal
+    cp /vagrant/mext_gdal.1.10.0.tar.gz .
+    tar zxf ./mext_gdal.1.10.0.tar.gz
+    cd ./mext_gdal
+    chmod a+x configure
+    ./configure --prefix=/opt/local
+    make
+    chmod a+x install-sh
+    sudo make install
+  SH1
+
+  config.vm.provision :shell, privileged: false, inline: <<-SH1
+    set -x
+    LD_LIBRARY_PATH=/opt/local/lib:/usr/lib; export LD_LIBRARY_PATH
+    INPUT=/vagrant/files
+    OUTPUT=/vagrant/output
+    for file in `ls $INPUT/*.xml`
+    do
+      filename=`basename -s .xml $file`
+      outputfile=$OUTPUT/$filename.shp
+      /opt/local/bin/ogr2ogr $outputfile $file
+    done
+  SH1
 end
