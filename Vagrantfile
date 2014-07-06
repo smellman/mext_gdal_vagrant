@@ -120,20 +120,29 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   # chef-validator, unless you changed the configuration.
   #
   #   chef.validation_client_name = "ORGNAME-validator"
+
+  if Vagrant.has_plugin?("vagrant-cachier")
+    config.cache.auto_detect = true
+  end
+
   config.vm.provision :shell, inline: <<-SH1
-    set -x
-    export DEBIAN_FRONTEND=noninteractive
-    apt-get update
-    apt-get -y upgrade
-    apt-get build-dep gdal
-    cp /vagrant/mext_gdal.1.10.0.tar.gz .
-    tar zxf ./mext_gdal.1.10.0.tar.gz
-    cd ./mext_gdal
-    chmod a+x configure
-    ./configure --prefix=/opt/local
-    make
-    chmod a+x install-sh
-    sudo make install
+    if [ -f /opt/local/bin/ogr2ogr ]; then
+      echo "pass to build"
+    else
+      set -x
+      export DEBIAN_FRONTEND=noninteractive
+      apt-get update
+      apt-get -y upgrade
+      apt-get -y build-dep gdal
+      cp /vagrant/mext_gdal.1.10.0.tar.gz .
+      tar zxf ./mext_gdal.1.10.0.tar.gz
+      cd ./mext_gdal
+      chmod a+x configure
+      ./configure --prefix=/opt/local
+      make
+      chmod a+x install-sh
+      sudo make install
+    fi
   SH1
 
   config.vm.provision :shell, privileged: false, inline: <<-SH1
@@ -145,7 +154,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     do
       filename=`basename -s .xml $file`
       outputfile=$OUTPUT/$filename.shp
-      /opt/local/bin/ogr2ogr $outputfile $file
+      /opt/local/bin/ogr2ogr -f "ESRI Shapefile" -lco "ENCODING=UTF-8" $outputfile $file
     done
   SH1
 end
